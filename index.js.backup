@@ -1,0 +1,137 @@
+import e from "express";
+import { collectionName, connection } from "./dbconfig.js";
+import cors from "cors";
+import { ObjectId } from "mongodb";
+
+const app = e();
+
+app.use(cors());
+app.use(e.json());
+
+app.post("/add-task", async (req, res) => {
+    const db = await connection();
+    const collection = db.collection(collectionName);
+    const result  = await collection.insertOne(req.body);
+    if(result) {
+        res.send({
+            message: "new task added",
+            success: true,
+            result
+        })
+    } else {
+         res.send({
+            message: "task not added",
+            success: false,
+            result
+        })   
+    }
+})
+
+app.get("/tasks", async (req, res) => {
+    const db = await connection();
+    const collection = db.collection(collectionName);
+    const result  = await collection.find({}).toArray();
+    if(result) {
+        res.send({
+            message: "Task list fetched",
+            success: true,
+            result
+        })
+    } else {
+         res.send({
+            message: "Error fetching task list",
+            success: false,
+            result
+        })   
+    }
+})
+
+app.put("/update-task", async (req, res) => {
+    const db = await connection();
+    const collection = db.collection(collectionName);
+    const { _id, ...fields } = req.body;
+    const update = {$set: fields};
+    const result  = await collection.updateOne({_id: new ObjectId(_id)}, update);
+    if(result) {
+        res.send({
+            message: "Task updated",
+            success: true,
+            result
+        })
+    } else {
+        res.send({
+            message: "Task not updated",
+            success: false,
+            result
+        })   
+    }
+});
+
+app.get("/task/:id", async (req, res) => {
+    const db = await connection();
+    const collection = db.collection(collectionName);
+    const result  = await collection.findOne({_id: new ObjectId(req.params.id)});
+    if(result) {
+        res.send({
+            message: "Task fetched",
+            success: true,
+            result
+        })
+    } else {
+         res.send({
+            message: "Error fetching task",
+            success: false,
+            result
+        })   
+    }
+})
+
+app.put("/completed/:id", async (req, res) => {
+    const db = await connection();
+    const collection = db.collection(collectionName);
+    const result  = await collection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { completed: true } }
+    );
+    if(result) {
+        res.send({
+            message: "Task marked as completed",
+            success: true,
+            result
+        })
+    } else {
+        res.send({
+            message: "Error marking task as completed",
+            success: false,
+            result
+        })   
+    }
+});
+
+app.delete("/delete/:id", async (req, res) => {
+    const db = await connection();
+    const collection = db.collection(collectionName);
+    const result  = await collection.deleteOne({ _id: new ObjectId(req.params.id) });
+    if(result) {
+        res.send({
+            message: "Task Deleted",
+            success: true,
+            result
+        })
+    } else {
+         res.send({
+            message: "Error deleting task",
+            success: false,
+            result
+        })   
+    }
+})
+
+app.get("/", (req, res) => {
+    res.send({
+        message: "Backend is Working",
+        success: true
+    })
+})
+
+app.listen(3200);

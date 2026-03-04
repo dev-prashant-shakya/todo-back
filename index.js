@@ -35,48 +35,71 @@ const cookieOptions = {
 
 
 app.post('/login', async(req, res) => {
-    const {email, password} = req.body;
-    if (email && password) {
-        const db = await connection();
-        const collection = db.collection("users");
-        const user = await collection.findOne({ email, password });
+    try {
+        const {email, password} = req.body;
+        if (email && password) {
+            const db = await connection();
+            const collection = db.collection("users");
+            const user = await collection.findOne({ email, password });
 
-        if(user) {
-            jwt.sign({ email, password }, JWT_SECRET, {expiresIn: '5d'}, (err, token) => {
-                res.cookie('token', token, cookieOptions);
+            if(user) {
+                jwt.sign({ email, password }, JWT_SECRET, {expiresIn: '5d'}, (err, token) => {
+                    if (err) {
+                        console.error("JWT sign error:", err);
+                        return res.status(500).send({ success: false, message: "Internal server error" });
+                    }
+                    res.cookie('token', token, cookieOptions);
+                    res.send({
+                        success: true,
+                        message: "Login successful"
+                    })
+                });
+            } else {
                 res.send({
-                    success: true,
-                    message: "Login successful"
+                    success: false,
+                    message: "Invalid email or password"
                 })
-            });
+            }
         } else {
-            res.send({
-                success: false,
-                message: "Invalid email or password"
-            })
+            res.status(400).send({ success: false, message: "Email and password are required" });
         }
+    } catch (error) {
+        console.error("Error in /login:", error);
+        res.status(500).send({ success: false, message: "Internal server error", error: error.message });
     }
 })
 
 
 app.post('/signup', async (req, res) => {
-    const userData = req.body;
+    try {
+        const userData = req.body;
 
-    if(userData.email && userData.password) {
-        const db = await connection();
-        const collection = db.collection("users");
-        const result = await collection.insertOne(userData);
-        if (result) {
-            jwt.sign(userData, JWT_SECRET, {expiresIn: '5d'}, (err, token) => {
-                res.cookie('token', token, cookieOptions);
-                res.send({
-                    success: true,
-                    message: "Signup successful"
-                })
-            });
+        if(userData.email && userData.password) {
+            const db = await connection();
+            const collection = db.collection("users");
+            const result = await collection.insertOne(userData);
+            if (result) {
+                jwt.sign(userData, JWT_SECRET, {expiresIn: '5d'}, (err, token) => {
+                    if (err) {
+                        console.error("JWT sign error:", err);
+                        return res.status(500).send({ success: false, message: "Internal server error" });
+                    }
+                    res.cookie('token', token, cookieOptions);
+                    res.send({
+                        success: true,
+                        message: "Signup successful"
+                    })
+                });
+            } else {
+                console.error("Error inserting user data:", result);
+                res.status(500).send({ success: false, message: "Failed to create account" });
+            }
         } else {
-            console.error("Error inserting user data:", result);
+            res.status(400).send({ success: false, message: "Email and password are required" });
         }
+    } catch (error) {
+        console.error("Error in /signup:", error);
+        res.status(500).send({ success: false, message: "Internal server error", error: error.message });
     }
 });
 

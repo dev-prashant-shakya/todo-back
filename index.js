@@ -12,12 +12,26 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 const app = e();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://2dokeeper.netlify.app"
+    ],
     credentials: true
 }));
 app.use(e.json());
 app.use(cookieParser());
+
+// Shared cookie options
+const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 5 * 24 * 60 * 60 * 1000 // 5 days
+};
 
 
 app.post('/login', async(req, res) => {
@@ -29,12 +43,7 @@ app.post('/login', async(req, res) => {
 
         if(user) {
             jwt.sign({ email, password }, JWT_SECRET, {expiresIn: '5d'}, (err, token) => {
-                res.cookie('token', token, {
-                    httpOnly: true,
-                    secure: false, // set to true in production with HTTPS
-                    sameSite: 'lax',
-                    maxAge: 5 * 24 * 60 * 60 * 1000 // 5 days
-                });
+                res.cookie('token', token, cookieOptions);
                 res.send({
                     success: true,
                     message: "Login successful"
@@ -59,12 +68,7 @@ app.post('/signup', async (req, res) => {
         const result = await collection.insertOne(userData);
         if (result) {
             jwt.sign(userData, JWT_SECRET, {expiresIn: '5d'}, (err, token) => {
-                res.cookie('token', token, {
-                    httpOnly: true,
-                    secure: false, // set to true in production with HTTPS
-                    sameSite: 'lax',
-                    maxAge: 5 * 24 * 60 * 60 * 1000 // 5 days
-                });
+                res.cookie('token', token, cookieOptions);
                 res.send({
                     success: true,
                     message: "Signup successful"
@@ -332,8 +336,8 @@ app.get("/verify-token", (req, res) => {
 app.post("/logout", (req, res) => {
     res.clearCookie('token', {
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax'
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax'
     });
     res.send({
         success: true,
